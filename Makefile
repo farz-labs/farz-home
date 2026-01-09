@@ -1,5 +1,8 @@
 run:
-	poetry run python main.py --help
+	poetry run python main.py
+
+lint:
+	ruff check .
 
 test:
-	ruff check .
+	poetry run pytest -v
