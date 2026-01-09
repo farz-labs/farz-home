@@ -1,0 +1,28 @@
+[project]
+name = "farz-home"
+version = "0.1.0"
+description = "The Generic Reality Engine"
+authors = [
+    {name = "Umar Ahmed",email = "39865635+UmarGit@users.noreply.github.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic (>=2.12.5,<3.0.0)",
+    "typer (>=0.21.1,<0.22.0)",
+    "structlog (>=25.5.0,<26.0.0)",
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "rich (>=14.2.0,<15.0.0)",
+    "pyfiglet (>=1.0.4,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.14.11,<0.15.0)"
+]
