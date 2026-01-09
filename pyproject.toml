@@ -14,7 +14,8 @@ dependencies = [
     "structlog (>=25.5.0,<26.0.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
     "rich (>=14.2.0,<15.0.0)",
-    "pyfiglet (>=1.0.4,<2.0.0)"
+    "pyfiglet (>=1.0.4,<2.0.0)",
+    "uuid (>=1.30,<2.0)"
 ]
 
 
@@ -24,5 +25,11 @@ build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
-    "ruff (>=0.14.11,<0.15.0)"
+    "ruff (>=0.14.11,<0.15.0)",
+    "pytest (>=9.0.2,<10.0.0)"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"
