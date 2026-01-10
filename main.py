@@ -4,7 +4,9 @@ from rich.text import Text
 from rich.panel import Panel
 from pyfiglet import Figlet
 
+
 from core.loader import DataLoader
+from core.engine import run_living_room_simulation
 
 app = typer.Typer()
 console = Console()
@@ -59,10 +61,16 @@ def main():
     console.print("\n🚀 Starting session...\n", style="green")
 
     loader = DataLoader()
-    data = loader.load("./simulations/home.yaml")
+    world_state = loader.load("./simulations/home.yaml")
 
-    if data:
-        console.print(f"\nLoaded {len(data.entities)} entities into the world state", style="dim white")
+    if world_state:
+        console.print(
+            f"\nLoaded {len(world_state.entities)} entities into the world state\n",
+            style="dim white",
+        )
+
+        run_living_room_simulation(world_state=world_state)
+
     else:
         console.print("\nFailed to load data", style="red")
 

@@ -10,8 +10,18 @@ class Entity(BaseModel):
 
 
 class WorldState(BaseModel):
-    entities: list[Entity]
+    entities: dict[uuid.UUID, Entity] = Field(default_factory=dict)
 
     def get_entities_by_tag(self, tag: str) -> list[Entity]:
-        """Returns a list of entities that contain the specified tag."""
-        return [e for e in self.entities if tag in e.tags]
+        return [e for e in self.entities.values() if tag in e.tags]
+
+    def get_attribute_value(self, entity_id: uuid.UUID, attribute: str):
+        if entity := self.entities.get(entity_id):
+            return entity.attributes.get(attribute)
+        raise KeyError(f"Entity {entity_id} not found")
+
+    def set_attribute_value(self, entity_id: uuid.UUID, attribute: str, value: float):
+        if entity := self.entities.get(entity_id):
+            entity.attributes[attribute] = value
+            return
+        raise KeyError(f"Entity {entity_id} not found")
