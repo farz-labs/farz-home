@@ -4,6 +4,8 @@ from rich.text import Text
 from rich.panel import Panel
 from pyfiglet import Figlet
 
+from core.loader import DataLoader
+
 app = typer.Typer()
 console = Console()
 
@@ -54,7 +56,15 @@ def main():
     print_ui()
 
     input()
-    console.print("\n🚀 Starting session...", style="green")
+    console.print("\n🚀 Starting session...\n", style="green")
+
+    loader = DataLoader()
+    data = loader.load("./simulations/home.yaml")
+
+    if data:
+        console.print(f"\nLoaded {len(data.entities)} entities into the world state", style="dim white")
+    else:
+        console.print("\nFailed to load data", style="red")
 
 
 if __name__ == "__main__":
