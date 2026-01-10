@@ -1,48 +1,43 @@
-import logging
 import sys
+import logging
+import structlog
+from structlog.stdlib import BoundLogger
 
 
-class LogsFormatter(logging.Formatter):
-    # ANSI color codes
-    COLORS = {
-        "DEBUG": "\033[36m",  # Cyan
-        "INFO": "\033[32m",  # Green
-        "WARNING": "\033[33m",  # Yellow
-        "ERROR": "\033[31m",  # Red
-        "CRITICAL": "\033[35m",  # Magenta
-    }
-    RESET = "\033[0m"
+def setup_logger(level: int = logging.INFO) -> BoundLogger:
+    """
+    Configures a hybrid logger:
+    - Pretty colors/formatting for humans (Console)
+    - JSON for machines (when not in a terminal)
+    """
 
-    def format(self, record):
-        # Get original format
-        log_message = super().format(record)
+    processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="%H:%M:%S"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+    ]
 
-        # Add color if in terminal
-        if sys.stderr.isatty():
-            levelname = record.levelname
-            color = self.COLORS.get(levelname, "")
-            if color:
-                log_message = f"{color}{log_message}{self.RESET}"
+    if sys.stderr.isatty():
+        processors.append(structlog.dev.ConsoleRenderer(colors=True))
+    else:
+        processors.append(structlog.processors.JSONRenderer())
 
-        return log_message
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
 
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stderr,
+        level=level,
+    )
 
-def setup_logger(name="AppLogger", level=logging.DEBUG):
-    """Create and configure a colorful logger"""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-
-    # Avoid duplicate handlers
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stderr)
-        formatter = LogsFormatter(
-            fmt="%(asctime)s | %(levelname)-8s | %(message)s",
-            datefmt="%H:%M:%S",
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-
-    return logger
+    return structlog.get_logger()
 
 
-app_logger = setup_logger()
+app_logger: BoundLogger = setup_logger()
