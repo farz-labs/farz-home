@@ -25,3 +25,9 @@ class WorldState(BaseModel):
             entity.attributes[attribute] = value
             return
         raise KeyError(f"Entity {entity_id} not found")
+
+
+class Decision(BaseModel):
+    action: str
+    target_entity_id: uuid.UUID
+    reasoning: str
