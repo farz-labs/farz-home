@@ -22,7 +22,7 @@ def test_generic_entity_system():
     assert kitchen_light.id != server_fan.id
 
     world = WorldState(
-        entities={str(kitchen_light.id): kitchen_light, str(server_fan.id): server_fan}
+        entities=[kitchen_light, server_fan]
     )
 
     kitchen_entities = world.get_entities_by_tag("location:kitchen")

@@ -1,0 +1,6 @@
+entities:
+  - name: "Living Room Light"
+    tags: ["room:living", "device:light"]
+    attributes:
+      state: "OFF"
+      brightness: 0
