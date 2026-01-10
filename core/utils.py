@@ -1,4 +1,4 @@
-from core.models import WorldState, Entity
+from core.models import WorldState, Entity, Decision
 from core.logger import app_logger
 
 
@@ -59,3 +59,15 @@ def log_attribute(
         attribute=attribute_name,
         value=value,
     )
+
+
+def make_decision(world: WorldState, entity_name: str):
+    entity = get_entity_by_name(world, entity_name)
+
+    decision = Decision(
+        action="change:state",
+        entity_id=entity.id,
+        reasoning="state of light should be turned on",
+    )
+
+    return decision

@@ -4,7 +4,8 @@ import signal
 from typing import Callable
 from functools import partial
 
-from core.models import WorldState
+from core.models import WorldState, Decision
+from core.intelligence import make_decision
 from core.logger import app_logger
 from core.utils import increment_attribute, log_attribute
 
@@ -25,18 +26,17 @@ class SimulationEngine:
     def run_loop(
         self,
         world_state: WorldState,
-        update_fn: Callable[[WorldState], None],
+        physics_fn: Callable[[WorldState], None],
+        decision_fn: Callable[[WorldState], Decision | None] | None = None,
+        action_fn: Callable[[WorldState, Decision], None] | None = None,
         log_fn: Callable[[WorldState], None] | None = None,
         max_ticks: int | None = None,
     ) -> None:
         """
-        Runs the simulation.
-        If max_ticks is provided, stops after N loops (Deterministic).
-        If max_ticks is None, runs until SIGINT (Infinite).
+        Runs the Generic Reality Engine.
+        Cycle: Physics -> Observe -> Decide -> Act
         """
         self._running = True
-
-        # Only hijack signals if we are running in "Infinite Mode"
         if max_ticks is None:
             self._setup_signal_handling()
 
@@ -47,18 +47,39 @@ class SimulationEngine:
                 if max_ticks and ticks >= max_ticks:
                     break
 
+                # --- PHASE 1: PHYSICS (Entropy) ---
+                physics_fn(world_state)
+
+                # --- PHASE 2: INTELLIGENCE (The Brain) ---
+                if decision_fn:
+                    decision = decision_fn(world_state)
+
+                    if decision:
+                        app_logger.info(
+                            "agent_decision",
+                            action=decision.action,
+                            target=str(decision.target_entity_id),
+                            reason=decision.reasoning,
+                        )
+
+                        # --- PHASE 3: ACTUATOR (The Hands) ---
+                        if action_fn:
+                            action_fn(world_state, decision)
+                        else:
+                            app_logger.warning("decision_made_but_no_action_handler")
+
+                # --- PHASE 4: OBSERVABILITY ---
                 if log_fn:
                     log_fn(world_state)
 
-                update_fn(world_state)
-
+                # Heartbeat
                 if self.step > 0:
                     time.sleep(self.step)
 
                 ticks += 1
 
             except Exception as e:
-                app_logger.error("Error in loop", exc_info=e)
+                app_logger.error("sim_loop_crash", error=str(e))
                 if max_ticks:
                     raise e
                 time.sleep(self.step)
@@ -89,6 +110,7 @@ def run_living_room_simulation(
 
     sim_engine.run_loop(
         world_state=world_state,
-        update_fn=update_brightness,
+        physics_fn=update_brightness,
+        decision_fn=make_decision,
         log_fn=log_brightness,
     )
