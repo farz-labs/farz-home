@@ -1,5 +1,4 @@
-from core.models import WorldState, Entity, Decision
-from core.logger import app_logger
+from core.models import WorldState, Entity
 
 
 def get_entity_by_name(world: WorldState, name: str) -> Entity:
@@ -40,34 +39,3 @@ def increment_attribute(
 
     new_value = current + delta
     world.set_attribute_value(entity.id, attribute_name, new_value)
-
-
-def log_attribute(
-    world: WorldState,
-    entity_name: str,
-    attribute_name: str,
-) -> None:
-    """
-    Emits a structured log event for observability.
-    """
-    entity = get_entity_by_name(world, entity_name)
-    value = world.get_attribute_value(entity.id, attribute_name)
-
-    app_logger.info(
-        "entity_observation",
-        entity_name=entity_name,
-        attribute=attribute_name,
-        value=value,
-    )
-
-
-def make_decision(world: WorldState, entity_name: str):
-    entity = get_entity_by_name(world, entity_name)
-
-    decision = Decision(
-        action="change:state",
-        entity_id=entity.id,
-        reasoning="state of light should be turned on",
-    )
-
-    return decision

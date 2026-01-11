@@ -1,7 +1,34 @@
 import sys
 import logging
 import structlog
+
 from structlog.stdlib import BoundLogger
+from structlog.types import EventDict
+
+from interfaces.tui import is_tui_active, add_log_to_buffer
+
+
+def tui_aware_console_renderer(logger, method_name, event_dict: EventDict) -> EventDict:
+    try:
+        if is_tui_active():
+            return {}
+    except (ImportError, Exception):
+        pass
+    return event_dict
+
+
+def log_with_tui(level: str, event: str, **context):
+    try:
+        if is_tui_active():
+            if context:
+                formatted = (
+                    f"{event}: {', '.join(f'{k}={v}' for k, v in context.items())}"
+                )
+            else:
+                formatted = event
+            add_log_to_buffer(formatted)
+    except (ImportError, Exception):
+        pass
 
 
 def setup_logger(level: int = logging.INFO) -> BoundLogger:
@@ -20,7 +47,12 @@ def setup_logger(level: int = logging.INFO) -> BoundLogger:
     ]
 
     if sys.stderr.isatty():
-        processors.append(structlog.dev.ConsoleRenderer(colors=True))
+        processors.extend(
+            [
+                tui_aware_console_renderer,
+                structlog.dev.ConsoleRenderer(colors=True),
+            ]
+        )
     else:
         processors.append(structlog.processors.JSONRenderer())
 

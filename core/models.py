@@ -15,13 +15,18 @@ class WorldState(BaseModel):
     def get_entities_by_tag(self, tag: str) -> list[Entity]:
         return [e for e in self.entities.values() if tag in e.tags]
 
-    def get_attribute_value(self, entity_id: uuid.UUID, attribute: str):
-        if entity := self.entities.get(entity_id):
+    def get_entity_by_id(self, entity_id):
+        return self.entities.get(entity_id)
+
+    def get_attribute_value(self, entity_id, attribute):
+        entity = self.get_entity_by_id(entity_id)
+        if entity:
             return entity.attributes.get(attribute)
         raise KeyError(f"Entity {entity_id} not found")
 
-    def set_attribute_value(self, entity_id: uuid.UUID, attribute: str, value: float):
-        if entity := self.entities.get(entity_id):
+    def set_attribute_value(self, entity_id, attribute, value):
+        entity = self.get_entity_by_id(entity_id)
+        if entity:
             entity.attributes[attribute] = value
             return
         raise KeyError(f"Entity {entity_id} not found")
@@ -30,4 +35,5 @@ class WorldState(BaseModel):
 class Decision(BaseModel):
     action: str
     target_entity_id: uuid.UUID
+    params: dict = Field(default_factory=dict)
     reasoning: str

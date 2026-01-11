@@ -3,14 +3,14 @@ from pathlib import Path
 from pydantic import ValidationError
 from typing import Dict
 from core.models import WorldState, Entity
-from core.logger import app_logger
+from core.logger import log_with_tui
 
 
 class DataLoader:
     def load(self, file_path: str | Path) -> WorldState | None:
         path = Path(file_path)
         if not path.exists():
-            app_logger.critical("file_not_found", path=str(path))
+            log_with_tui("error", "file_not_found", path=str(path))
             return None
 
         try:
@@ -28,5 +28,5 @@ class DataLoader:
             return WorldState(entities=entity_map)
 
         except (ValidationError, yaml.YAMLError) as e:
-            app_logger.error("loader_failed", file=str(path), error=str(e))
+            log_with_tui("error", "loader_failed", file=str(path), error=str(e))
             return None

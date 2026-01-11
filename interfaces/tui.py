@@ -1,5 +1,6 @@
 from collections import deque
 from datetime import datetime
+from contextlib import contextmanager
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.table import Table
@@ -15,12 +16,25 @@ THEME_COLOR = "#F85E00"
 THEME_STYLE = Style(color=THEME_COLOR, bold=True)
 BORDER_STYLE = Style(color=THEME_COLOR, dim=True)
 
-# Helper console to detect screen size
 console = Console()
 
-# Log buffer (Tail)
-# We limit this to 8 lines so it fits perfectly in the footer
 log_buffer = deque(maxlen=8)
+
+_tui_active = False
+
+
+def is_tui_active() -> bool:
+    return _tui_active
+
+
+@contextmanager
+def tui_mode():
+    global _tui_active
+    _tui_active = True
+    try:
+        yield
+    finally:
+        _tui_active = False
 
 
 def add_log_to_buffer(message: str):
@@ -136,16 +150,13 @@ def generate_log_panel() -> Panel:
         title="[b]System Events[/b]",
         border_style="white",
         box=box.ROUNDED,
-        height=10,  # Fixed height ensures it never flickers
+        height=10,
     )
 
 
 def render_layout(world: WorldState) -> Layout:
     layout = Layout()
 
-    # 1. Fixed Header (3 lines)
-    # 2. Fixed Footer (10 lines for logs)
-    # 3. Fluid Body (The rest)
     layout.split_column(
         Layout(name="header", size=3), Layout(name="body"), Layout(name="logs", size=10)
     )
@@ -156,7 +167,6 @@ def render_layout(world: WorldState) -> Layout:
     body_height = term_height - 13
 
     layout["header"].update(generate_header())
-    # Pass the calculated height to the table generator
     layout["body"].update(generate_entity_table(world, height=body_height))
     layout["logs"].update(generate_log_panel())
 
