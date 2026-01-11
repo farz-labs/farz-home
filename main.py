@@ -1,78 +1,107 @@
 import typer
+import sys
+import time
+from functools import partial
 from rich.console import Console
-from rich.text import Text
-from rich.panel import Panel
-from pyfiglet import Figlet
-
+from rich.live import Live
 
 from core.loader import DataLoader
-from core.engine import run_living_room_simulation
+from core.engine import SimulationEngine
+from core.models import WorldState
+from core.utils import increment_attribute
+from interfaces.tui import (
+    print_splash_screen,
+    render_layout,
+    add_log_to_buffer,
+    THEME_COLOR,
+)
 
 app = typer.Typer()
 console = Console()
 
-THEME_COLOR = "#F85E00"
-
-
-def print_ui():
-    console.clear()
-
-    # We construct a Rich Text object with mixed styles
-    welcome_text = Text("Welcome to the ", style="dim white")
-    welcome_text.append("Agentic Home Automation Engine!", style="bold white")
-
-    # Create the panel with the theme color border
-    welcome_panel = Panel(
-        welcome_text,
-        border_style=THEME_COLOR,
-        padding=(0, 2),  # Vertical, Horizontal padding inside box
-        width=60,  # Fixed width to match look
-        title="*",  # The little star on the border
-        title_align="left",
-    )
-
-    # Print centered
-    console.print(welcome_panel)
-    console.print()  # Spacer
-
-    f = Figlet(font="ansi_shadow", width=100)
-    ascii_str = f.renderText("FARZ")
-
-    console.print(Text(ascii_str, style=THEME_COLOR))
-
-    f2 = Figlet(font="ansi_shadow", width=100)
-    ascii_str_2 = f2.renderText("HOME")
-    console.print(Text(ascii_str_2, style=THEME_COLOR))
-
-    console.print()  # Spacer
-
-    status_text = Text("🎉 Login successful. Press ", style="dim white")
-    status_text.append("Enter", style="bold white")
-    status_text.append(" to continue", style="dim white")
-
-    console.print(status_text)
-
 
 @app.command()
-def main():
-    print_ui()
+def start(config: str = "./simulations/home.yaml"):
+    """
+    Starts the Farz Home Simulation Engine.
+    """
+    # 1. SPLASH SCREEN PHASE
+    print_splash_screen(console)
+    try:
+        input()
+    except KeyboardInterrupt:
+        console.print("\nAborted.", style="red")
+        sys.exit(0)
 
-    input()
-    console.print("\n🚀 Starting session...\n", style="green")
+    console.print("\n🚀 Initializing Core Runtime...", style=THEME_COLOR)
+    time.sleep(0.5)
 
+    # 2. INITIALIZATION PHASE
     loader = DataLoader()
-    world_state = loader.load("./simulations/home.yaml")
+    world_state = loader.load(config)
 
-    if world_state:
+    if not world_state:
         console.print(
-            f"\nLoaded {len(world_state.entities)} entities into the world state\n",
-            style="dim white",
+            f"❌ Critical Error: Could not load configuration at {config}",
+            style="bold red",
         )
+        sys.exit(1)
 
-        run_living_room_simulation(world_state=world_state)
+    add_log_to_buffer(f"System loaded with {len(world_state.entities)} entities.")
+    sim_engine = SimulationEngine(step=0.5)
 
-    else:
-        console.print("\nFailed to load data", style="red")
+    # 3. SETUP SIMULATION LOGIC (PHYSICS)
+    target_name = "Living Room Light"
+
+    # We must ensure the entity exists to avoid crash
+    try:
+        target = next(e for e in world_state.entities.values() if e.name == target_name)
+
+        physics_logic = partial(
+            increment_attribute,
+            entity_name=target.name,
+            attribute_name="brightness",
+            delta=0.1,
+            default=0.0,
+        )
+    except StopIteration:
+
+        def physics_logic(w):
+            return None
+
+        add_log_to_buffer(f"Warning: '{target_name}' not found. Physics disabled.")
+
+    # 4. RUNTIME LOOP (RICH LIVE)
+    try:
+        with Live(
+            render_layout(world_state), refresh_per_second=4, screen=True
+        ) as live:
+
+            def tui_observer(state: WorldState):
+                """Callback: Updates the screen and logs specific changes."""
+                # Check for changes to log (simplified)
+                # In a real system, we'd compare state diffs
+                live.update(render_layout(state))
+
+                # Hacky log for visual feedback
+                val = state.get_attribute_value(target.id, "brightness")
+                if val and isinstance(val, float) and int(val * 10) % 5 == 0:
+                    add_log_to_buffer(
+                        f"Sensor Update: {target.name} brightness is {val:.1f}"
+                    )
+
+            # Start the infinite loop
+            # Note: We use 'physics_fn' as per the rigorous architecture definition
+            sim_engine.run_loop(
+                world_state=world_state,
+                physics_fn=physics_logic,
+                log_fn=tui_observer,
+            )
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        console.print("\n Simulation Stopped.", style="bold red")
 
 
 if __name__ == "__main__":

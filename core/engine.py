@@ -86,9 +86,9 @@ class SimulationEngine:
 
 
 def run_living_room_simulation(
-    world_state: WorldState, engine: SimulationEngine | None = None
+    world_state: WorldState
 ):
-    sim_engine = engine or SimulationEngine(step=0.5)
+    sim_engine = SimulationEngine(step=0.5)
 
     target = next(
         e for e in world_state.entities.values() if e.name == "Living Room Light"

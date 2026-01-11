@@ -4,3 +4,89 @@ entities:
     attributes:
       state: "OFF"
       brightness: 0
+
+  - name: "Kitchen Thermostat"
+    tags: ["room:kitchen", "device:thermostat"]
+    attributes:
+      current_temperature: 21.5
+      target_temperature: 22.0
+      hvac_mode: "HEAT"
+      humidity: 45
+
+  - name: "Front Door Lock"
+    tags: ["room:entryway", "device:lock", "security"]
+    attributes:
+      state: "LOCKED"
+      battery_level: 88
+      jammed: false
+
+  - name: "Master Bedroom Window"
+    tags: ["room:bedroom", "device:sensor", "type:contact"]
+    attributes:
+      state: "CLOSED"
+      last_changed: "2023-10-27T08:15:00Z"
+
+  - name: "Office Smart Plug"
+    tags: ["room:office", "device:switch", "energy_monitor"]
+    attributes:
+      state: "ON"
+      current_consumption_w: 125.4
+      daily_usage_kwh: 1.2
+
+  - name: "Hallway Motion Sensor"
+    tags: ["room:hallway", "device:sensor", "type:motion"]
+    attributes:
+      state: "CLEAR"
+      lux_level: 150
+      timeout_seconds: 60
+
+  - name: "Garage Door Opener"
+    tags: ["room:garage", "device:cover"]
+    attributes:
+      state: "CLOSED"
+      position: 0
+      motor_status: "IDLE"
+
+  - name: "Patio Speaker"
+    tags: ["room:outdoor", "device:media_player"]
+    attributes:
+      state: "PLAYING"
+      volume: 35
+      source: "Spotify"
+      track_title: "Morning Coffee"
+
+  - name: "Main WiFi Router"
+    tags: ["room:office", "device:router", "network"]
+    attributes:
+      state: "ONLINE"
+      ssid: "HomeSweetHome_5G"
+      connected_devices_count: 14
+      current_download_mbps: 850
+      current_upload_mbps: 42
+      wan_ip: "203.0.113.45"
+
+  - name: "Gaming Desktop"
+    tags: ["room:office", "device:computer", "type:desktop"]
+    attributes:
+      state: "ON"
+      cpu_usage_percent: 12
+      gpu_temp_c: 45
+      memory_used_gb: 6.4
+      current_app: "Steam"
+
+  - name: "Work Laptop"
+    tags: ["room:living", "device:computer", "type:laptop"]
+    attributes:
+      state: "SLEEP"
+      battery_level: 78
+      is_charging: false
+      wifi_signal_dbm: -55
+      last_active: "2023-10-27T09:30:00Z"
+
+  - name: "Hallway Mesh Point"
+    tags: ["room:hallway", "device:extender", "network"]
+    attributes:
+      state: "ONLINE"
+      uplink_quality: "GOOD"
+      clients_connected: 4
+      uptime_hours: 142
