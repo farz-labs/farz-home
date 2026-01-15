@@ -32,8 +32,18 @@ class WorldState(BaseModel):
         raise KeyError(f"Entity {entity_id} not found")
 
 
+class DecisionParams(BaseModel):
+    attribute_name: str | None = Field(
+        None, description="Name of the attribute to change"
+    )
+    target_value: str | None = Field(
+        None, description="The value to set (convert to int/float/bool later)"
+    )
+    delta: float | None = Field(None, description="Amount to increment or decrement")
+
+
 class Decision(BaseModel):
     action: str
     target_entity_id: uuid.UUID
-    params: dict = Field(default_factory=dict)
+    params: DecisionParams
     reasoning: str

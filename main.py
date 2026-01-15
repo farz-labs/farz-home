@@ -51,7 +51,7 @@ def start(config: str = "./simulations/home.yaml"):
 
     dataloader = DataLoader()
     intelligence = Intelligence()
-    sim_engine = SimulationEngine(step=0.5)
+    sim_engine = SimulationEngine(step=1)
 
     world_state = dataloader.load(config)
     if not world_state:
