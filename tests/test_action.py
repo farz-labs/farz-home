@@ -1,5 +1,5 @@
 import uuid
-from core.models import Entity, WorldState, Decision
+from core.models import Entity, WorldState, Decision, DecisionParams
 from core.actions import Dispatcher
 
 
@@ -18,7 +18,7 @@ def test_action():
     decision = Decision(
         action="SET_ATTRIBUTE",
         target_entity_id=bulb_id,
-        params={"attribute": "brightness", "value": 10},
+        params=DecisionParams(attribute_name="brightness", target_value="10"),
         reasoning="Max brightness requested",
     )
 
@@ -44,7 +44,7 @@ def test_toggle_state():
     decision = Decision(
         action="TOGGLE_STATE",
         target_entity_id=bulb_id,
-        params={"attribute": "is_on"},
+        params=DecisionParams(attribute_name="is_on", target_value="False"),
         reasoning="Toggle light state",
     )
 
