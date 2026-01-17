@@ -5,8 +5,8 @@ from rich.live import Live
 
 from core.loader import DataLoader
 from core.engine import SimulationEngine
+from core.physics import PhysicsEngine
 from core.intelligence import Intelligence
-from core.utils import increment_attribute
 from core.logger import log_with_tui
 from interfaces.tui import (
     print_splash_screen,
@@ -17,14 +17,6 @@ from interfaces.tui import (
 
 app = typer.Typer()
 console = Console()
-
-
-def add_simulation_physics(world):
-    """Increment brightness on Living Room Light if it exists."""
-    try:
-        increment_attribute(world, "Living Room Light", "brightness", delta=0.1)
-    except ValueError:
-        pass
 
 
 @app.command()
@@ -53,7 +45,10 @@ def start(config: str = "./simulations/home.yaml"):
     intelligence = Intelligence()
     sim_engine = SimulationEngine(step=1)
 
-    world_state = dataloader.load(config)
+    world_state, physics_data = dataloader.load(config)
+
+    phy_engine = PhysicsEngine(physics_data=physics_data)
+
     if not world_state:
         console.print(
             f"Critical Error: Could not load configuration at {config}",
@@ -70,7 +65,7 @@ def start(config: str = "./simulations/home.yaml"):
 
             sim_engine.run_loop(
                 world_state=world_state,
-                physics_fn=add_simulation_physics,
+                physics_fn=phy_engine.apply_physics,
                 decision_fn=intelligence.make_decision,
                 action_fn=intelligence.apply_action,
                 log_fn=lambda state: live.update(render_layout(state)),

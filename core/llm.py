@@ -26,12 +26,9 @@ class Instructor:
     def _format_last_decision(self) -> str:
         """Format last decision for context in prompt."""
         if not self.last_decision:
-            return "None (first decision)"
+            return "None"
 
-        return f"""Action: {self.last_decision.action}
-Target Entity: {self.last_decision.target_entity_id}
-Parameters: {json.dumps(self.last_decision.params.model_json_schema())}
-Reasoning: {self.last_decision.reasoning}"""
+        return f"{self.last_decision.action} on {self.last_decision.target_entity_id}: {self.last_decision.reasoning[:50]}"
 
     def consult_oracle(self, world_state: WorldState) -> Decision | None:
         """Query the LLM for the next optimal action based on current state."""
@@ -41,79 +38,31 @@ Reasoning: {self.last_decision.reasoning}"""
             state_summary = self._summarize_state(world_state)
             last_decision_formatted = self._format_last_decision()
 
-            system_instruction = f"""You are an intelligent home automation AI that makes smart, context-aware decisions.
+            system_instruction = f"""You are a home automation AI. Make ONE optimal decision per cycle.
 
-═══════════════════════════════════════════════════════════════
-AVAILABLE ACTIONS:
-═══════════════════════════════════════════════════════════════
-{chr(10).join(f"  • {action}" for action in available_actions)}
+ACTIONS: {', '.join(available_actions)}
 
-═══════════════════════════════════════════════════════════════
-ACTION PARAMETER GUIDELINES:
-═══════════════════════════════════════════════════════════════
-SET_ATTRIBUTE:
-  • Use: attribute_name (string) and target_value (string)
-  • Example: Set temperature to "22", brightness to "80"
+PARAMS:
+- SET_ATTRIBUTE: attribute_name, target_value (as string)
+- TOGGLE_STATE: attribute_name (works on bool, ON/OFF, OPEN/CLOSED, etc.)
+- INCREMENT/DECREMENT_VALUE: attribute_name, delta
 
-TOGGLE_STATE:
-  • Use: attribute_name only
-  • Works on boolean: true ↔ false
-  • Works on state pairs: ON ↔ OFF, LOCKED ↔ UNLOCKED, CLOSED ↔ OPEN, IDLE ↔ ACTIVE
-  • Example: Toggle "state" attribute on a light
+PRIORITIES:
+1. Safety: Lock doors, fix failures
+2. Comfort: Light if lux<200, temp 20-24°C, charge if battery<20%
+3. Energy: Turn off unused devices
 
-INCREMENT_VALUE / DECREMENT_VALUE:
-  • Use: attribute_name and delta (numeric string)
-  • Example: Increment "temperature" by "2", decrement "brightness" by "10"
+RULES:
+- Use exact entity UUIDs from state
+- Return null if optimal
+- Avoid repeating actions unless state changed
 
-═══════════════════════════════════════════════════════════════
-DECISION PRIORITIES (in order):
-═══════════════════════════════════════════════════════════════
-1. Safety & Security:
-   - Lock unsecured doors/windows when nobody home
-   - Alert on critical sensor failures
+Last action: {last_decision_formatted}"""
 
-2. Comfort & Efficiency:
-   - Lighting: Turn on if lux < 200 (dark environment)
-   - Temperature: Adjust if outside 20-24°C comfort range
-   - Battery: Alert or charge if < 20%
-
-3. Energy Optimization:
-   - Turn off unnecessary devices
-   - Reduce brightness when sufficient ambient light
-
-═══════════════════════════════════════════════════════════════
-IMPORTANT RULES:
-═══════════════════════════════════════════════════════════════
-✓ Use EXACT entity UUIDs from the current state
-✓ Make ONE decision per cycle - choose the highest priority issue
-✓ Return null (no action field) if all systems are optimal
-✓ Avoid repeating the exact same action on the same entity unless state changed
-✓ Provide clear, concise reasoning for your decision
-
-═══════════════════════════════════════════════════════════════
-LAST DECISION CONTEXT:
-═══════════════════════════════════════════════════════════════
-{last_decision_formatted}
-
-Note: Avoid repeating this exact action unless the state has meaningfully changed.
-"""
-
-            user_prompt = f"""═══════════════════════════════════════════════════════════════
-CURRENT HOME STATE:
-═══════════════════════════════════════════════════════════════
+            user_prompt = f"""Current state:
 {state_summary}
 
-═══════════════════════════════════════════════════════════════
-TASK:
-═══════════════════════════════════════════════════════════════
-Analyze the current state and decide on ONE optimal action.
-Return null if no action is needed (everything is optimal).
-
-Consider:
-- What is the highest priority issue right now?
-- Did the last decision address this, or has something changed?
-- Will this action meaningfully improve the home state?
-"""
+Analyze and decide ONE optimal action. Return null if everything is optimal."""
 
             log_with_tui("info", "llm_api_call_starting", model=self.model)
 

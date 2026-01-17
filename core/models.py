@@ -9,10 +9,28 @@ class Entity(BaseModel):
     attributes: dict[str, bool | int | float | str] = Field(default_factory=dict)
 
 
+class Physics(BaseModel):
+    target_tag: str
+    attribute: str
+    delta: float
+    condition: str | None = None
+
+
 class WorldState(BaseModel):
     entities: dict[uuid.UUID, Entity] = Field(default_factory=dict)
+    global_attributes: dict[str, float | bool | str] = Field(default_factory=dict)
 
     def get_entities_by_tag(self, tag: str) -> list[Entity]:
+        # Handle virtual 'global' entity
+        if tag == "global":
+            return [
+                Entity(
+                    id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                    name="__global__",
+                    tags=["global"],
+                    attributes=self.global_attributes,
+                )
+            ]
         return [e for e in self.entities.values() if tag in e.tags]
 
     def get_entity_by_id(self, entity_id):
