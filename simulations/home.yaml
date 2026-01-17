@@ -1,92 +1,158 @@
+room: "Living Room"
+
+global_attributes:
+  time_of_day: 14.5  # 14:30 in 24hr format
+  weather: "sunny"
+  outdoor_temperature: 18.0
+  is_night: false
+  season: "spring"
+
 entities:
-  - name: "Living Room Light"
-    tags: ["room:living", "device:light"]
-    attributes:
-      state: "OFF"
-      brightness: 0
-
-  - name: "Kitchen Thermostat"
-    tags: ["room:kitchen", "device:thermostat"]
-    attributes:
-      current_temperature: 21.5
-      target_temperature: 22.0
-      hvac_mode: "HEAT"
-      humidity: 45
-
-  - name: "Front Door Lock"
-    tags: ["room:entryway", "device:lock", "security"]
-    attributes:
-      state: "LOCKED"
-      battery_level: 88
-      jammed: false
-
-  - name: "Master Bedroom Window"
-    tags: ["room:bedroom", "device:sensor", "type:contact"]
-    attributes:
-      state: "CLOSED"
-      last_changed: "2023-10-27T08:15:00Z"
-
-  - name: "Office Smart Plug"
-    tags: ["room:office", "device:switch", "energy_monitor"]
+  - name: "Living Room Ceiling Light"
+    tags: ["room:living", "device:light", "type:light"]
     attributes:
       state: "ON"
-      current_consumption_w: 125.4
-      daily_usage_kwh: 1.2
+      brightness: 70
+      heat: 0.0
 
-  - name: "Hallway Motion Sensor"
-    tags: ["room:hallway", "device:sensor", "type:motion"]
+  - name: "Living Room Thermostat"
+    tags: ["room:living", "device:thermostat"]
     attributes:
-      state: "CLEAR"
-      lux_level: 150
-      timeout_seconds: 60
+      current_temperature: 22.1
+      target_temperature: 22.5
+      hvac_mode: "HEAT"
+      humidity: 42
 
-  - name: "Garage Door Opener"
-    tags: ["room:garage", "device:cover"]
+  - name: "Living Room Window Sensor"
+    tags: ["room:living", "device:sensor", "type:contact"]
     attributes:
       state: "CLOSED"
-      position: 0
-      motor_status: "IDLE"
+      last_changed: "2023-10-27T07:55:00Z"
 
-  - name: "Patio Speaker"
-    tags: ["room:outdoor", "device:media_player"]
+  - name: "Living Room Motion Sensor"
+    tags: ["room:living", "device:sensor", "type:motion"]
+    attributes:
+      state: "DETECTED"
+      lux_level: 180
+      timeout_seconds: 60
+
+  - name: "Living Room Smart Speaker"
+    tags: ["room:living", "device:media_player", "type:media_player"]
     attributes:
       state: "PLAYING"
-      volume: 35
-      source: "Spotify"
-      track_title: "Morning Coffee"
+      volume: 25
+      source: "Bluetooth"
+      network_load_contribution: 0.0
 
-  - name: "Main WiFi Router"
-    tags: ["room:office", "device:router", "network"]
+  - name: "Living Room Laptop"
+    tags: ["room:living", "device:computer", "type:laptop", "type:computer"]
+    attributes:
+      state: "ON"
+      battery_level: 64
+      is_charging: true
+      cpu_usage_percent: 18
+      heat_output: 0.0
+      network_load_contribution: 0.0
+
+  - name: "Living Room WiFi Router"
+    tags: ["room:living", "device:router", "type:router", "network"]
     attributes:
       state: "ONLINE"
       ssid: "HomeSweetHome_5G"
-      connected_devices_count: 14
-      current_download_mbps: 850
-      current_upload_mbps: 42
-      wan_ip: "203.0.113.45"
+      connected_devices_count: 3
+      network_load: 25.0
+      heat: 0.0
+      current_download_mbps: 450
+      current_upload_mbps: 28
 
-  - name: "Gaming Desktop"
-    tags: ["room:office", "device:computer", "type:desktop"]
+  - name: "Living Room Smart TV"
+    tags: ["room:living", "device:media_player", "type:media_player"]
     attributes:
-      state: "ON"
-      cpu_usage_percent: 12
-      gpu_temp_c: 45
-      memory_used_gb: 6.4
-      current_app: "Steam"
+      state: "OFF"
+      volume: 15
+      source: "HDMI1"
+      heat: 0.0
+      network_load_contribution: 0.0
 
-  - name: "Work Laptop"
-    tags: ["room:living", "device:computer", "type:laptop"]
-    attributes:
-      state: "SLEEP"
-      battery_level: 78
-      is_charging: false
-      wifi_signal_dbm: -55
-      last_active: "2023-10-27T09:30:00Z"
+physics:
+  # Device-local heat generation
+  - target_tag: "type:light"
+    attribute: "heat"
+    delta: 0.15
+    condition: "state == \"ON\""
 
-  - name: "Hallway Mesh Point"
-    tags: ["room:hallway", "device:extender", "network"]
-    attributes:
-      state: "ONLINE"
-      uplink_quality: "GOOD"
-      clients_connected: 4
-      uptime_hours: 142
+  - target_tag: "type:laptop"
+    attribute: "heat_output"
+    delta: 0.2
+    condition: "state == \"ON\""
+
+  - target_tag: "type:router"
+    attribute: "heat"
+    delta: 0.1
+    condition: "network_load > 50"
+
+  - target_tag: "type:media_player"
+    attribute: "heat"
+    delta: 0.12
+    condition: "state == \"PLAYING\""
+
+  # Network load contributions
+  - target_tag: "type:laptop"
+    attribute: "network_load_contribution"
+    delta: 8.0
+    condition: "state == \"ON\""
+
+  - target_tag: "type:media_player"
+    attribute: "network_load_contribution"
+    delta: 15.0
+    condition: "state == \"PLAYING\""
+
+  # Natural decay
+  - target_tag: "type:router"
+    attribute: "network_load"
+    delta: -2.0
+
+  - target_tag: "type:laptop"
+    attribute: "heat_output"
+    delta: -0.1
+
+  - target_tag: "type:light"
+    attribute: "heat"
+    delta: -0.05
+
+  - target_tag: "type:media_player"
+    attribute: "heat"
+    delta: -0.08
+
+  # Temperature dynamics
+  - target_tag: "device:thermostat"
+    attribute: "current_temperature"
+    delta: 0.3
+    condition: "hvac_mode == \"HEAT\" and current_temperature < target_temperature"
+
+  - target_tag: "device:thermostat"
+    attribute: "current_temperature"
+    delta: -0.05
+
+  # Battery drain
+  - target_tag: "type:laptop"
+    attribute: "battery_level"
+    delta: -0.5
+    condition: "state == \"ON\" and is_charging == False"
+
+  # Global time progression (1 minute per tick)
+  - target_tag: "global"
+    attribute: "time_of_day"
+    delta: 0.016
+
+  # Weather affects indoor temperature
+  - target_tag: "device:thermostat"
+    attribute: "current_temperature"
+    delta: -0.15
+    condition: "g['outdoor_temperature'] < 15 and state == \"CLOSED\""
+
+  # Thermostat works harder in cold weather
+  - target_tag: "device:thermostat"
+    attribute: "current_temperature"
+    delta: 0.5
+    condition: "hvac_mode == \"HEAT\" and current_temperature < target_temperature and g['outdoor_temperature'] < 10"

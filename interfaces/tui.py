@@ -72,16 +72,44 @@ def print_splash_screen(console: Console):
     console.print(status_text)
 
 
-def generate_header() -> Panel:
+def generate_header(world: WorldState) -> Panel:
     grid = Table.grid(expand=True)
     grid.add_column(justify="left", ratio=1)
+    grid.add_column(justify="center", ratio=1)
     grid.add_column(justify="right", ratio=1)
 
     title = Text("FARZ HOME", style=THEME_STYLE)
-    subtitle = Text(" | Generic Reality Engine", style="dim white")
+    subtitle = Text(" | Reality Engine", style="dim white")
+    
+    # Global attributes display
+    global_attrs = world.global_attributes
+    time_of_day = global_attrs.get("time_of_day", 0.0)
+    weather = global_attrs.get("weather", "unknown")
+    outdoor_temp = global_attrs.get("outdoor_temperature", 0.0)
+    
+    # Format time as HH:MM
+    hours = int(time_of_day)
+    minutes = int((time_of_day - hours) * 60)
+    time_str = f"{hours:02d}:{minutes:02d}"
+    
+    # Weather emoji mapping
+    weather_icons = {
+        "sunny": "☀️",
+        "clear": "☀️",
+        "partly_cloudy": "⛅",
+        "cloudy": "☁️",
+        "overcast": "🌥️",
+        "rainy": "🌧️",
+        "stormy": "⛈️",
+        "snowy": "❄️",
+    }
+    weather_icon = weather_icons.get(weather, "🌤️")
+    
+    global_display = Text(f"{time_str} {weather_icon} {outdoor_temp:.1f}°C", style="cyan")
+    
     clock = Text(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), style="dim white")
 
-    grid.add_row(title + subtitle, clock)
+    grid.add_row(title + subtitle, global_display, clock)
     return Panel(grid, style=BORDER_STYLE, box=box.SIMPLE)
 
 
@@ -166,7 +194,7 @@ def render_layout(world: WorldState) -> Layout:
     term_height = console.height
     body_height = term_height - 13
 
-    layout["header"].update(generate_header())
+    layout["header"].update(generate_header(world))
     layout["body"].update(generate_entity_table(world, height=body_height))
     layout["logs"].update(generate_log_panel())
 
