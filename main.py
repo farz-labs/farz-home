@@ -6,6 +6,9 @@ from rich.live import Live
 from core.loader import DataLoader
 from core.engine import SimulationEngine
 from core.physics import PhysicsEngine
+
+from core.plugins import PluginLoader
+
 from core.intelligence import Intelligence
 from core.logger import log_with_tui
 from interfaces.tui import (
@@ -47,14 +50,20 @@ def start(config: str = "./simulations/home.yaml"):
 
     world_state, physics_data = dataloader.load(config)
 
-    phy_engine = PhysicsEngine(physics_data=physics_data)
-
     if not world_state:
         console.print(
             f"Critical Error: Could not load configuration at {config}",
             style="bold red",
         )
         sys.exit(1)
+
+    phy_engine = PhysicsEngine(physics_data=[])
+    
+    # Load and initialize plugins after core systems are ready
+    plugin_loader = PluginLoader()
+    plugin_loader.load_from_directory("./plugins")
+    plugin_loader.initialize_all(intelligence.dispatcher, phy_engine)
+    plugin_loader.call_startup_hooks(world_state)
 
     try:
         with (

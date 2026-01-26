@@ -142,3 +142,27 @@ class PhysicsEngine:
                 error=str(e),
             )
             return False
+
+    def add_physics_rule(self, physics: Physics) -> None:
+        """Add a single physics rule (typically called by plugins)."""
+        self.physics_data.append(physics)
+        log_with_tui(
+            "debug",
+            "physics_rule_added",
+            target_tag=physics.target_tag,
+            attribute=physics.attribute,
+            delta=physics.delta,
+        )
+
+    def add_multiple_rules(self, rules: list[Physics]) -> None:
+        """Bulk add multiple physics rules."""
+        self.physics_data.extend(rules)
+        log_with_tui(
+            "info",
+            "physics_rules_bulk_added",
+            count=len(rules),
+        )
+
+    def get_rules_by_tag(self, tag: str) -> list[Physics]:
+        """Query existing physics rules by target tag."""
+        return [p for p in self.physics_data if p.target_tag == tag]
