@@ -1,5 +1,5 @@
 from core.models import WorldState, Entity
-from core.logger import log_with_tui
+from core.logger import logger
 
 
 def get_entity_by_name(world: WorldState, name: str) -> Entity:
@@ -31,9 +31,8 @@ def increment_attribute(
 
     if current is None:
         current = default
-        log_with_tui(
-            "debug",
-            "attribute_auto_init",
+        logger.debug(
+            "Attribute auto init",
             entity=entity_name,
             attribute=attribute_name,
             default=default,

@@ -1,10 +1,11 @@
 import time
+import asyncio
 import signal
 
 from typing import Callable
 
 from core.models import WorldState, Decision
-from core.logger import log_with_tui
+from core.logger import logger
 
 
 class SimulationEngine:
@@ -18,7 +19,7 @@ class SimulationEngine:
 
     def _stop(self, signum, frame):
         self._running = False
-        log_with_tui("info", "shutting_down_simulation")
+        logger.info("Shutting down simulation")
 
     def run_loop(
         self,
@@ -52,9 +53,8 @@ class SimulationEngine:
                     decision = decision_fn(world_state)
 
                     if decision:
-                        log_with_tui(
-                            "info",
-                            "agent_decision",
+                        logger.info(
+                            "Agent decision",
                             action=decision.action,
                             target=str(decision.target_entity_id),
                             reason=decision.reasoning,
@@ -64,7 +64,7 @@ class SimulationEngine:
                         if action_fn:
                             action_fn(world_state, decision)
                         else:
-                            log_with_tui("warning", "decision_made_but_no_action_handler")
+                            logger.warning("Decision made but no action handler")
 
                 # --- PHASE 4: OBSERVABILITY ---
                 if log_fn:
@@ -77,7 +77,68 @@ class SimulationEngine:
                 ticks += 1
 
             except Exception as e:
-                log_with_tui("error", "sim_loop_crash", error=str(e))
+                logger.error("Sim loop crash", error=str(e))
                 if max_ticks:
                     raise e
                 time.sleep(self.step)
+
+    async def run_loop_async(
+        self,
+        world_state: WorldState,
+        physics_fn: Callable[[WorldState], None],
+        decision_fn: Callable[[WorldState], Decision | None] | None = None,
+        action_fn: Callable[[WorldState, Decision], None] | None = None,
+        log_fn: Callable[[WorldState], None] | None = None,
+        plugin_tick_fn: Callable[[WorldState, int], None] | None = None,
+        max_ticks: int | None = None,
+    ) -> None:
+        """Async version of run_loop for FastAPI integration."""
+        self._running = True
+        ticks = 0
+
+        while self._running:
+            try:
+                if max_ticks and ticks >= max_ticks:
+                    break
+
+                physics_fn(world_state)
+
+                if plugin_tick_fn:
+                    await plugin_tick_fn(world_state, ticks)
+
+                if decision_fn:
+                    if asyncio.iscoroutinefunction(decision_fn):
+                        decision = await decision_fn(world_state)
+                    else:
+                        decision = decision_fn(world_state)
+
+                    if decision:
+                        logger.info(
+                            "Agent decision",
+                            action=decision.action,
+                            target=str(decision.target_entity_id),
+                            reason=decision.reasoning,
+                        )
+
+                        if action_fn:
+                            action_fn(world_state, decision)
+                        else:
+                            logger.warning("Decision made but no action handler")
+
+                if log_fn:
+                    log_fn(world_state)
+
+                if self.step > 0:
+                    await asyncio.sleep(self.step)
+
+                ticks += 1
+
+            except Exception as e:
+                logger.error("Sim loop crash", error=str(e))
+                if max_ticks:
+                    raise e
+                await asyncio.sleep(self.step)
+
+    def stop(self):
+        """Gracefully stop the engine."""
+        self._running = False

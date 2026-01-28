@@ -3,6 +3,7 @@ import sys
 from rich.console import Console
 from rich.live import Live
 
+from core.models import WorldState
 from core.loader import DataLoader
 from core.engine import SimulationEngine
 from core.physics import PhysicsEngine
@@ -10,7 +11,7 @@ from core.physics import PhysicsEngine
 from core.plugins import PluginLoader
 
 from core.intelligence import Intelligence
-from core.logger import log_with_tui
+from core.logger import logger
 from interfaces.tui import (
     print_splash_screen,
     render_layout,
@@ -48,7 +49,7 @@ def start(config: str = "./simulations/home.yaml"):
     intelligence = Intelligence()
     sim_engine = SimulationEngine(step=1)
 
-    world_state, physics_data = dataloader.load(config)
+    world_state = WorldState()
 
     if not world_state:
         console.print(
@@ -58,7 +59,7 @@ def start(config: str = "./simulations/home.yaml"):
         sys.exit(1)
 
     phy_engine = PhysicsEngine(physics_data=[])
-    
+
     # Load and initialize plugins after core systems are ready
     plugin_loader = PluginLoader()
     plugin_loader.load_from_directory("./plugins")
@@ -70,7 +71,7 @@ def start(config: str = "./simulations/home.yaml"):
             tui_mode(),
             Live(render_layout(world_state), refresh_per_second=4, screen=True) as live,
         ):
-            log_with_tui("info", "system_loaded", entities=len(world_state.entities))
+            logger.info("System loaded", entities=len(world_state.entities))
 
             sim_engine.run_loop(
                 world_state=world_state,

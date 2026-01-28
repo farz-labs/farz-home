@@ -49,6 +49,21 @@ class WorldState(BaseModel):
             return
         raise KeyError(f"Entity {entity_id} not found")
 
+    def to_dict(self) -> dict:
+        """Serialize WorldState to JSON-compatible dict."""
+        return {
+            "entities": [
+                {
+                    "id": str(entity.id),
+                    "name": entity.name,
+                    "tags": entity.tags,
+                    "attributes": entity.attributes,
+                }
+                for entity in self.entities.values()
+            ],
+            "global_attributes": self.global_attributes,
+        }
+
 
 class DecisionParams(BaseModel):
     attribute_name: str | None = Field(
@@ -58,10 +73,16 @@ class DecisionParams(BaseModel):
         None, description="The value to set (convert to int/float/bool later)"
     )
     delta: float | None = Field(None, description="Amount to increment or decrement")
+    service: str | None = Field(
+        None, description="Home Assistant service name (turn_on, turn_off, etc.)"
+    )
+    service_data: dict | None = Field(
+        None, description="Additional service parameters for Home Assistant"
+    )
 
 
 class Decision(BaseModel):
     action: str
     target_entity_id: uuid.UUID
-    params: DecisionParams
+    params: DecisionParams | dict
     reasoning: str

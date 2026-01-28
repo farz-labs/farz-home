@@ -3,7 +3,7 @@ import uuid
 from enum import Enum
 from typing import Callable
 
-from core.logger import log_with_tui
+from core.logger import logger
 from core.models import WorldState, Decision, DecisionParams
 
 
@@ -39,29 +39,25 @@ class Dispatcher:
 
         if action_func:
             try:
-                log_with_tui(
-                    "info",
-                    "dispatch_start",
+                logger.info(
+                    "Dispatch start",
                     action=decision.action,
                     target_id=str(decision.target_entity_id),
                 )
                 action_func(world, decision.target_entity_id, decision.params)
-                log_with_tui(
-                    "info",
-                    "dispatch_complete",
+                logger.info(
+                    "Dispatch complete",
                     action=decision.action,
                 )
             except Exception as e:
-                log_with_tui(
-                    "error",
-                    "dispatch_failed",
+                logger.error(
+                    "Dispatch failed",
                     action=decision.action,
                     error=str(e),
                 )
         else:
-            log_with_tui(
-                "warning",
-                "unknown_action_attempted",
+            logger.warning(
+                "Unknown action attempted",
                 action=decision.action,
             )
 
@@ -90,9 +86,8 @@ class Dispatcher:
             value_str = params.get("value") or params.get("target_value")
 
         if key is None or value_str is None:
-            log_with_tui(
-                "error",
-                "missing_parameters",
+            logger.error(
+                "Missing parameters",
                 target_id=str(target_id),
                 params=str(params),
             )
@@ -113,23 +108,20 @@ class Dispatcher:
                 value = value_str
 
             world.set_attribute_value(target_id, key, value)
-            log_with_tui(
-                "info",
-                "attribute_set_success",
+            logger.info(
+                "Attribute set success",
                 target_id=str(target_id),
                 attribute=key,
                 value=value,
             )
         except KeyError:
-            log_with_tui(
-                "error",
-                "entity_not_found",
+            logger.error(
+                "Entity not found",
                 target_id=str(target_id),
             )
         except Exception as e:
-            log_with_tui(
-                "error",
-                "attribute_set_failed",
+            logger.error(
+                "Attribute set failed",
                 target_id=str(target_id),
                 error=str(e),
             )
@@ -163,9 +155,8 @@ class Dispatcher:
             if isinstance(current_val, bool):
                 new_val = not current_val
                 world.set_attribute_value(target_id, key, new_val)
-                log_with_tui(
-                    "info",
-                    "toggle_success",
+                logger.info(
+                    "Toggle success",
                     target_id=str(target_id),
                     attribute=key,
                     old_value=current_val,
@@ -174,18 +165,16 @@ class Dispatcher:
             elif isinstance(current_val, str) and current_val in STRING_STATE_PAIRS:
                 new_val = STRING_STATE_PAIRS[current_val]
                 world.set_attribute_value(target_id, key, new_val)
-                log_with_tui(
-                    "info",
-                    "toggle_success",
+                logger.info(
+                    "Toggle success",
                     target_id=str(target_id),
                     attribute=key,
                     old_value=current_val,
                     new_value=new_val,
                 )
             else:
-                log_with_tui(
-                    "error",
-                    "invalid_attribute_type",
+                logger.error(
+                    "Invalid attribute type",
                     target_id=str(target_id),
                     attribute=key,
                     current_type=type(current_val).__name__,
@@ -193,15 +182,13 @@ class Dispatcher:
                     supported="bool or string pairs (ON/OFF, LOCKED/UNLOCKED, etc.)",
                 )
         except KeyError:
-            log_with_tui(
-                "error",
-                "entity_not_found",
+            logger.error(
+                "Entity not found",
                 target_id=str(target_id),
             )
         except Exception as e:
-            log_with_tui(
-                "error",
-                "toggle_failed",
+            logger.error(
+                "Toggle failed",
                 target_id=str(target_id),
                 error=str(e),
             )
@@ -222,32 +209,28 @@ class Dispatcher:
             if isinstance(current_val, (int, float)):
                 new_val = current_val + delta
                 world.set_attribute_value(target_id, key, new_val)
-                log_with_tui(
-                    "info",
-                    "increment_success",
+                logger.info(
+                    "Increment success",
                     target_id=str(target_id),
                     attribute=key,
                     delta=delta,
                     new_value=new_val,
                 )
             else:
-                log_with_tui(
-                    "error",
-                    "invalid_attribute_type",
+                logger.error(
+                    "Invalid attribute type",
                     target_id=str(target_id),
                     attribute=key,
                     current_type=type(current_val).__name__,
                 )
         except KeyError:
-            log_with_tui(
-                "error",
-                "entity_not_found",
+            logger.error(
+                "Entity not found",
                 target_id=str(target_id),
             )
         except Exception as e:
-            log_with_tui(
-                "error",
-                "increment_failed",
+            logger.error(
+                "Increment failed",
                 target_id=str(target_id),
                 error=str(e),
             )
@@ -268,32 +251,28 @@ class Dispatcher:
             if isinstance(current_val, (int, float)):
                 new_val = current_val - delta
                 world.set_attribute_value(target_id, key, new_val)
-                log_with_tui(
-                    "info",
-                    "decrement_success",
+                logger.info(
+                    "Decrement success",
                     target_id=str(target_id),
                     attribute=key,
                     delta=delta,
                     new_value=new_val,
                 )
             else:
-                log_with_tui(
-                    "error",
-                    "invalid_attribute_type",
+                logger.error(
+                    "Invalid attribute type",
                     target_id=str(target_id),
                     attribute=key,
                     current_type=type(current_val).__name__,
                 )
         except KeyError:
-            log_with_tui(
-                "error",
-                "entity_not_found",
+            logger.error(
+                "Entity not found",
                 target_id=str(target_id),
             )
         except Exception as e:
-            log_with_tui(
-                "error",
-                "decrement_failed",
+            logger.error(
+                "Decrement failed",
                 target_id=str(target_id),
                 error=str(e),
             )

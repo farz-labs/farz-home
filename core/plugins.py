@@ -8,7 +8,7 @@ from importlib import import_module
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from core.logger import log_with_tui
+from core.logger import logger
 
 if TYPE_CHECKING:
     from core.actions import Dispatcher
@@ -44,6 +44,14 @@ class BasePlugin(ABC):
         """
         pass
 
+    async def on_tick(self, state: "WorldState", tick: int) -> None:
+        """
+        Optional hook called every engine tick.
+        Plugins can use this for continuous state synchronization.
+        Default implementation does nothing.
+        """
+        pass
+
 
 class PluginLoader:
     def __init__(self):
@@ -72,31 +80,27 @@ class PluginLoader:
                         try:
                             plugin_instance = obj()
                             self.plugins.append(plugin_instance)
-                            log_with_tui(
-                                "info",
-                                "plugin_loaded",
+                            logger.info(
+                                "Plugin loaded",
                                 name=plugin_instance.name,
                                 module=full_module_path,
                             )
                         except Exception as e:
-                            log_with_tui(
-                                "error",
-                                "plugin_instantiation_failed",
+                            logger.error(
+                                "Plugin instantiation failed",
                                 class_name=obj.__name__,
                                 error=str(e),
                             )
 
             except ImportError as e:
-                log_with_tui(
-                    "error",
-                    "plugin_import_failed",
+                logger.error(
+                    "Plugin import failed",
                     module=full_module_path,
                     error=str(e),
                 )
             except Exception as e:
-                log_with_tui(
-                    "error",
-                    "plugin_load_failed",
+                logger.error(
+                    "Plugin load failed",
                     module=full_module_path,
                     error=str(e),
                 )
@@ -108,16 +112,14 @@ class PluginLoader:
                 plugin.register_actions(dispatcher)
                 plugin.register_physics(physics_engine)
             except Exception as e:
-                log_with_tui(
-                    "error",
-                    "plugin_registration_failed",
+                logger.error(
+                    "Plugin registration failed",
                     name=plugin.name,
                     error=str(e),
                 )
-        
-        log_with_tui(
-            "info",
-            "plugins_initialized",
+
+        logger.info(
+            "Plugins initialized",
             count=len(self.plugins),
             names=[p.name for p in self.plugins],
         )
@@ -128,9 +130,24 @@ class PluginLoader:
             try:
                 plugin.on_startup(state)
             except Exception as e:
-                log_with_tui(
-                    "error",
-                    "plugin_startup_failed",
+                logger.error(
+                    "Plugin startup failed",
                     name=plugin.name,
                     error=str(e),
                 )
+
+    async def call_tick_hooks(self, state: "WorldState", tick: int) -> None:
+        """Call on_tick for all loaded plugins."""
+        for plugin in self.plugins:
+            try:
+                await plugin.on_tick(state, tick)
+            except Exception as e:
+                logger.error(
+                    "Plugin tick failed",
+                    name=plugin.name,
+                    error=str(e),
+                )
+
+    def get_all_plugins(self) -> list[BasePlugin]:
+        """Return all loaded plugin instances."""
+        return self.plugins
