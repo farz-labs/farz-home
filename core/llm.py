@@ -5,7 +5,7 @@ from ollama import chat, ChatResponse, Message
 
 from core.models import WorldState, Decision
 from core.actions import ActionType
-from core.logger import log_with_tui
+from core.logger import logger
 
 load_dotenv()
 
@@ -16,12 +16,42 @@ class Instructor:
         self.last_decision: Decision | None = None
 
     def _summarize_state(self, world_state: WorldState) -> str:
-        """Create a structured summary of the current world state."""
-        lines = []
+        """Create a concise state summary."""
+        controllable_domains = [
+            "light",
+            "switch",
+            "input_boolean",
+            "climate",
+            "cover",
+            "fan",
+            "lock",
+            "media_player",
+        ]
+
+        controllable = []
+        context = []
+
         for entity in world_state.entities.values():
-            attrs = ", ".join(f"{k}={v}" for k, v in entity.attributes.items())
-            lines.append(f"- {entity.name} (ID: {entity.id}): {attrs}")
-        return "\n".join(lines)
+            ha_entity_id = entity.attributes.get("ha_entity_id", "")
+            domain = ha_entity_id.split(".")[0] if "." in ha_entity_id else ""
+            state = entity.attributes.get("state", "")
+
+            if domain in controllable_domains:
+                controllable.append(
+                    f"- {entity.name} (id={str(entity.id)}): state={state}, ha_entity_id={ha_entity_id}"
+                )
+            elif domain in ["sun", "weather"]:
+                context.append(f"- {entity.name}: {state}")
+
+        result = []
+        if controllable:
+            result.append("CONTROLLABLE:")
+            result.extend(controllable)
+        if context:
+            result.append("\nCONTEXT:")
+            result.extend(context)
+
+        return "\n".join(result)
 
     def _format_last_decision(self) -> str:
         """Format last decision for context in prompt."""
@@ -35,36 +65,32 @@ class Instructor:
         response = None
         try:
             available_actions = [action.value for action in ActionType]
+            available_actions.append("HA_CALL_SERVICE")
             state_summary = self._summarize_state(world_state)
             last_decision_formatted = self._format_last_decision()
 
-            system_instruction = f"""You are a home automation AI. Make ONE optimal decision per cycle.
+            system_instruction = f"""You control Home Assistant devices. Available actions: {", ".join(available_actions)}
 
-ACTIONS: {', '.join(available_actions)}
+Examples:
+1. Turn on light when sun is down:
+{{"action": "HA_CALL_SERVICE", "target_entity_id": "<uuid>", "params": {{"service": "turn_on"}}, "reasoning": "Sun below horizon"}}
 
-PARAMS:
-- SET_ATTRIBUTE: attribute_name, target_value (as string)
-- TOGGLE_STATE: attribute_name (works on bool, ON/OFF, OPEN/CLOSED, etc.)
-- INCREMENT/DECREMENT_VALUE: attribute_name, delta
+2. Toggle input_boolean:
+{{"action": "HA_CALL_SERVICE", "target_entity_id": "<uuid>", "params": {{"service": "toggle"}}, "reasoning": "Trigger automation"}}
 
-PRIORITIES:
-1. Safety: Lock doors, fix failures
-2. Comfort: Light if lux<200, temp 20-24°C, charge if battery<20%
-3. Energy: Turn off unused devices
+3. Set light brightness:
+{{"action": "HA_CALL_SERVICE", "target_entity_id": "<uuid>", "params": {{"service": "turn_on", "service_data": {{"brightness": 128}}}}, "reasoning": "Dim for evening"}}
 
-RULES:
-- Use exact entity UUIDs from state
-- Return null if optimal
-- Avoid repeating actions unless state changed
+Use exact UUIDs from state. Return null if no action needed
 
 Last action: {last_decision_formatted}"""
 
-            user_prompt = f"""Current state:
+            user_prompt = f"""State:
 {state_summary}
 
-Analyze and decide ONE optimal action. Return null if everything is optimal."""
+Decide ONE action or return null."""
 
-            log_with_tui("info", "llm_api_call_starting", model=self.model)
+            logger.info("LLM API call starting", model=self.model)
 
             decision_schema = Decision.model_json_schema()
 
@@ -77,32 +103,33 @@ Analyze and decide ONE optimal action. Return null if everything is optimal."""
                 format=decision_schema,
             )
 
-            log_with_tui("info", "llm_api_call_completed", has_response=bool(response))
+            logger.info("LLM API call completed", has_response=bool(response))
 
             if not response.message.content:
-                log_with_tui("info", "llm_decision_none")
+                logger.info("LLM decision none")
                 return None
 
             content_dict = json.loads(response.message.content)
 
             if not content_dict:
-                log_with_tui("info", "llm_decision_empty")
+                logger.info("LLM decision empty")
                 self.last_decision = None
                 return None
 
             decision = Decision.model_validate(content_dict)
 
+            ed = decision.target_entity_id
+
             if decision.action == "null":
-                log_with_tui("info", "llm_decision_empty")
+                logger.info("LLM decision empty")
                 self.last_decision = None
                 return None
 
             # Update last decision tracking
             self.last_decision = decision
 
-            log_with_tui(
-                "info",
-                "llm_decision_made",
+            logger.info(
+                "LLM decision made",
                 action=decision.action,
                 target=decision.target_entity_id,
                 reasoning=decision.reasoning[:100],  # Truncate for logging
@@ -113,9 +140,8 @@ Analyze and decide ONE optimal action. Return null if everything is optimal."""
             raw_response = (
                 response.message.content if response and response.message else "N/A"
             )
-            log_with_tui(
-                "error",
-                "llm_json_parse_failed",
+            logger.error(
+                "LLM JSON parse failed",
                 error=str(e),
                 response_text=raw_response[:200],
             )
@@ -124,9 +150,8 @@ Analyze and decide ONE optimal action. Return null if everything is optimal."""
             raw_response = (
                 response.message.content if response and response.message else "N/A"
             )
-            log_with_tui(
-                "error",
-                "llm_consult_failed",
+            logger.error(
+                "LLM consult failed",
                 error=str(e),
                 response_text=raw_response[:200],
             )
@@ -135,4 +160,4 @@ Analyze and decide ONE optimal action. Return null if everything is optimal."""
     def reset_context(self):
         """Reset last decision context (useful for testing or new sessions)."""
         self.last_decision = None
-        log_with_tui("info", "llm_context_reset")
+        logger.info("LLM context reset")

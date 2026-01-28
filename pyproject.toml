@@ -7,7 +7,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "pydantic (>=2.12.5,<3.0.0)",
     "typer (>=0.21.1,<0.22.0)",
@@ -18,7 +18,11 @@ dependencies = [
     "uuid (>=1.30,<2.0)",
     "dotenv (>=0.9.9,<0.10.0)",
     "ollama (>=0.6.1,<0.7.0)",
-    "importlib (>=1.0.4,<2.0.0)"
+    "importlib (>=1.0.4,<2.0.0)",
+    "fastapi (>=0.115.0,<0.116.0)",
+    "uvicorn[standard] (>=0.34.0,<0.35.0)",
+    "requests (>=2.32.0,<3.0.0)",
+    "loguru (>=0.7.3,<0.8.0)"
 ]
 
 
