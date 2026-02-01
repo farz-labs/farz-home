@@ -86,3 +86,20 @@ class Decision(BaseModel):
     target_entity_id: uuid.UUID
     params: DecisionParams | dict
     reasoning: str
+
+
+class PreferenceRequest(BaseModel):
+    text: str
+    tags: list[str] = []
+    context: str = ""
+
+
+class CleanupRequest(BaseModel):
+    days: int = 7
+
+
+class CorrectionRequest(BaseModel):
+    entity_id: str
+    action_description: str
+    lesson: str
+    context: dict = {}

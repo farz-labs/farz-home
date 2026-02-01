@@ -1,20 +1,10 @@
 import time
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
 
+from core.models import PreferenceRequest, CleanupRequest, CorrectionRequest
 from core.intelligence import Intelligence
 
 router = APIRouter()
-
-
-class PreferenceRequest(BaseModel):
-    text: str
-    tags: list[str] = []
-    context: str = ""
-
-
-class CleanupRequest(BaseModel):
-    days: int = 7
 
 
 @router.get("/")
@@ -94,6 +84,39 @@ async def cleanup_memories(request: Request, cleanup_req: CleanupRequest):
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
 
 
+@router.post("/correction")
+async def store_correction(request: Request, correction: CorrectionRequest):
+    """Manually store a user correction without auto-detection."""
+    try:
+        intelligence: Intelligence = request.app.state.intelligence
+        if not intelligence or not hasattr(intelligence, "instructor"):
+            raise HTTPException(status_code=503, detail="Intelligence not available")
+
+        # Build metadata
+        metadata = {
+            "timestamp": time.time(),
+            "type": "correction",
+            "entity_id": correction.entity_id,
+            "action_description": correction.action_description,
+            "manual": True,  # Flag as manually submitted
+            "context": correction.context,
+        }
+
+        # Store the correction lesson
+        intelligence.instructor.memory.store(correction.lesson, metadata)
+
+        return {
+            "status": "success",
+            "message": "Correction stored successfully",
+            "lesson": correction.lesson,
+            "metadata": metadata,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to store correction: {str(e)}"
+        )
+
+
 @router.get("/stats")
 async def get_memory_stats(request: Request):
     """Get statistics about stored memories."""
@@ -111,6 +134,10 @@ async def get_memory_stats(request: Request):
         type_counts = {}
         success_count = 0
         failed_count = 0
+        total_corrections = 0
+        corrections_by_entity = {}
+        corrections_by_action = {}
+        total_correction_time = 0
 
         for memory in all_memories["memories"]:
             metadata = memory.get("metadata", {})
@@ -122,11 +149,37 @@ async def get_memory_stats(request: Request):
             elif metadata.get("success") is False:
                 failed_count += 1
 
+            # Track correction-specific stats
+            if mem_type == "correction":
+                total_corrections += 1
+
+                entity_name = metadata.get("entity_name", "unknown")
+                corrections_by_entity[entity_name] = (
+                    corrections_by_entity.get(entity_name, 0) + 1
+                )
+
+                action = metadata.get("action", "unknown")
+                corrections_by_action[action] = corrections_by_action.get(action, 0) + 1
+
+                elapsed = metadata.get("elapsed_seconds", 0)
+                if elapsed:
+                    total_correction_time += elapsed
+
+        avg_correction_time = (
+            (total_correction_time / total_corrections) if total_corrections > 0 else 0
+        )
+
         return {
             "total_memories": total,
             "by_type": type_counts,
             "successful_actions": success_count,
             "failed_actions": failed_count,
+            "corrections": {
+                "total": total_corrections,
+                "by_entity": corrections_by_entity,
+                "by_action": corrections_by_action,
+                "average_time_to_correction_seconds": round(avg_correction_time, 1),
+            },
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
