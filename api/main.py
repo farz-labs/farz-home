@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
     app.state.world_state = world_state
     app.state.engine = sim_engine
     app.state.plugin_loader = plugin_loader
+    app.state.intelligence = intelligence
 
     engine_task = asyncio.create_task(
         sim_engine.run_loop_async(

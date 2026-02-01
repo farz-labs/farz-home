@@ -4,3 +4,4 @@ __pycache__
 .env
 /logs
 hass/config
+/chroma_db

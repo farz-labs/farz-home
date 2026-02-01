@@ -4,7 +4,6 @@ from rich.console import Console
 from rich.live import Live
 
 from core.models import WorldState
-from core.loader import DataLoader
 from core.engine import SimulationEngine
 from core.physics import PhysicsEngine
 
@@ -45,7 +44,6 @@ def start(config: str = "./simulations/home.yaml"):
 
     console.print("\n🚀 Initializing Core Runtime...", style=THEME_COLOR)
 
-    dataloader = DataLoader()
     intelligence = Intelligence()
     sim_engine = SimulationEngine(step=1)
 
