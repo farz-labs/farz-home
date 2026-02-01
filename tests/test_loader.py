@@ -19,9 +19,10 @@ entities:
 
     # 2. Load
     data_loader = DataLoader()
-    state = data_loader.load(file_path)
+    result = data_loader.load(file_path)
 
-    assert state is not None
+    assert result is not None
+    state, physics_data = result
     assert len(state.entities) == 1
 
     first_entity = list(state.entities.values())[0]

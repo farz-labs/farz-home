@@ -97,4 +97,49 @@ class Intelligence:
             action=decision.action,
             target=str(decision.target_entity_id)[:8],
         )
-        self.dispatcher.dispatch(world=world, decision=decision)
+        
+        # Execute the decision
+        try:
+            self.dispatcher.dispatch(world=world, decision=decision)
+            
+            # Store successful decision in memory
+            try:
+                entity = world.get_entity_by_id(decision.target_entity_id)
+                entity_name = entity.name if entity else str(decision.target_entity_id)
+                
+                memory_text = f"Action: {decision.action} on {entity_name}. Reasoning: {decision.reasoning}"
+                memory_metadata = {
+                    "timestamp": time.time(),
+                    "action": decision.action,
+                    "entity_id": str(decision.target_entity_id),
+                    "entity_name": entity_name,
+                    "success": True
+                }
+                
+                self.instructor.memory.store(memory_text, memory_metadata)
+                logger.debug("Decision stored in memory", action=decision.action)
+            except Exception as mem_error:
+                logger.warning("Memory store failed", error=str(mem_error))
+                
+        except Exception as e:
+            # Store failed decision in memory
+            try:
+                entity = world.get_entity_by_id(decision.target_entity_id)
+                entity_name = entity.name if entity else str(decision.target_entity_id)
+                
+                memory_text = f"Action FAILED: {decision.action} on {entity_name}. Error: {str(e)}. Reasoning: {decision.reasoning}"
+                memory_metadata = {
+                    "timestamp": time.time(),
+                    "action": decision.action,
+                    "entity_id": str(decision.target_entity_id),
+                    "entity_name": entity_name,
+                    "success": False,
+                    "error": str(e)
+                }
+                
+                self.instructor.memory.store(memory_text, memory_metadata)
+                logger.error("Decision failed and logged to memory", action=decision.action, error=str(e))
+            except Exception as mem_error:
+                logger.warning("Memory store failed for error", error=str(mem_error))
+            
+            raise
