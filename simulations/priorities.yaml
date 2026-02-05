@@ -1,0 +1,25 @@
+# Domain Priority Configuration for Mixture of Agents
+# Defines the default precedence when specialist agents have conflicting proposals
+# Higher priority domains will be favored during Manager arbitration
+
+# Default priority order (highest to lowest)
+priority_order:
+  - security    # Safety and security always takes precedence
+  - comfort     # User comfort is second priority
+  - energy      # Energy savings yield to comfort and security
+
+# Priority descriptions
+descriptions:
+  security: "Locks, sensors, alarms - preventing unauthorized access and ensuring safety"
+  comfort: "Climate, lighting, ambiance - maintaining user comfort and convenience"
+  energy: "Power consumption optimization - reducing waste and costs"
+
+# User preference overrides
+# These can be set via /api/v1/memory/preference endpoint to override defaults
+# Example: "I prefer energy savings over comfort when I'm away from home"
+user_overrides:
+  # Will be populated from memory queries during Manager arbitration
+  # Format: "context: priority_order"
+  # Example:
+  # away_mode: ["security", "energy", "comfort"]
+  # night_mode: ["security", "comfort", "energy"]
