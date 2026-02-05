@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
 
     world_state = WorldState()
     phy_engine = PhysicsEngine(physics_data=[])
-    intelligence = Intelligence(cooldown_seconds=30)
+    intelligence = Intelligence(cooldown_seconds=300)
     correction_detector = CorrectionDetector(correction_window=300)
     lesson_generator = LessonGenerator()
 
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
                         "confidence": correction.confidence,
                     }
 
-                    intelligence.instructor.memory.store(lesson, metadata)
+                    intelligence.memory.store(lesson, metadata)
                     logger.info(
                         "Correction lesson stored",
                         entity=correction.entity_name,
