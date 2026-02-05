@@ -13,10 +13,10 @@ async def get_all_memories(request: Request, skip: int = 0, limit: int = 100):
     try:
         # Access memory manager through intelligence
         intelligence: Intelligence = request.app.state.intelligence
-        if not intelligence or not hasattr(intelligence, "instructor"):
+        if not intelligence or not hasattr(intelligence, "memory"):
             raise HTTPException(status_code=503, detail="Intelligence not available")
 
-        result = intelligence.instructor.memory.get_all_memories(limit=limit, skip=skip)
+        result = intelligence.memory.get_all_memories(limit=limit, skip=skip)
 
         return {
             "memories": result["memories"],
@@ -36,7 +36,7 @@ async def store_preference(request: Request, preference: PreferenceRequest):
     """Store a user preference or constraint in memory."""
     try:
         intelligence: Intelligence = request.app.state.intelligence
-        if not intelligence or not hasattr(intelligence, "instructor"):
+        if not intelligence or not hasattr(intelligence, "memory"):
             raise HTTPException(status_code=503, detail="Intelligence not available")
 
         # Build metadata
@@ -48,7 +48,7 @@ async def store_preference(request: Request, preference: PreferenceRequest):
         }
 
         # Store the preference
-        intelligence.instructor.memory.store(preference.text, metadata)
+        intelligence.memory.store(preference.text, metadata)
 
         return {
             "status": "success",
@@ -67,10 +67,10 @@ async def cleanup_memories(request: Request, cleanup_req: CleanupRequest):
     """Manually trigger memory cleanup."""
     try:
         intelligence: Intelligence = request.app.state.intelligence
-        if not intelligence or not hasattr(intelligence, "instructor"):
+        if not intelligence or not hasattr(intelligence, "memory"):
             raise HTTPException(status_code=503, detail="Intelligence not available")
 
-        deleted_count = intelligence.instructor.memory.cleanup_old_memories(
+        deleted_count = intelligence.memory.cleanup_old_memories(
             days=cleanup_req.days
         )
 
@@ -89,7 +89,7 @@ async def store_correction(request: Request, correction: CorrectionRequest):
     """Manually store a user correction without auto-detection."""
     try:
         intelligence: Intelligence = request.app.state.intelligence
-        if not intelligence or not hasattr(intelligence, "instructor"):
+        if not intelligence or not hasattr(intelligence, "memory"):
             raise HTTPException(status_code=503, detail="Intelligence not available")
 
         # Build metadata
@@ -103,7 +103,7 @@ async def store_correction(request: Request, correction: CorrectionRequest):
         }
 
         # Store the correction lesson
-        intelligence.instructor.memory.store(correction.lesson, metadata)
+        intelligence.memory.store(correction.lesson, metadata)
 
         return {
             "status": "success",
@@ -122,10 +122,10 @@ async def get_memory_stats(request: Request):
     """Get statistics about stored memories."""
     try:
         intelligence: Intelligence = request.app.state.intelligence
-        if not intelligence or not hasattr(intelligence, "instructor"):
+        if not intelligence or not hasattr(intelligence, "memory"):
             raise HTTPException(status_code=503, detail="Intelligence not available")
 
-        all_memories = intelligence.instructor.memory.get_all_memories(limit=10000)
+        all_memories = intelligence.memory.get_all_memories(limit=10000)
 
         # Calculate stats
         total = all_memories["total"]

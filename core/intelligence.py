@@ -1,10 +1,16 @@
 import time
+import asyncio
 from collections import deque
 
 from core.models import WorldState, Decision
 from core.actions import Dispatcher
-from core.llm import Instructor
+from core.memory import MemoryManager
 from core.logger import logger
+from core.agents.security import SecurityAgent
+from core.agents.comfort import ComfortAgent
+from core.agents.energy import EnergyAgent
+from core.agents.manager import ManagerAgent
+from core.agents.orchestrator import ActionOrchestrator, ActionIntent
 
 
 class Intelligence:
@@ -12,18 +18,23 @@ class Intelligence:
         self.cooldown_seconds = cooldown_seconds
         self.last_consultation_time = time.time()
         self.recent_actions = deque(maxlen=10)  # Track last 10 actions
+        self.llm_available = True
 
-        try:
-            self.instructor = Instructor()
-            self.llm_available = True
-            logger.info("LLM initialized", cooldown=cooldown_seconds)
-        except ValueError as e:
-            self.llm_available = False
-            logger.error(
-                "LLM initialization failed",
-                reason=str(e),
-                solution="Set GEMINI_API_KEY environment variable",
-            )
+        # Initialize memory manager
+        self.memory = MemoryManager()
+
+        # Initialize specialist agents
+        self.security_agent = SecurityAgent()
+        self.comfort_agent = ComfortAgent()
+        self.energy_agent = EnergyAgent()
+        self.manager_agent = ManagerAgent()
+        self.orchestrator = ActionOrchestrator()
+        
+        logger.info(
+            "Mixture of Agents initialized",
+            agents=["Security", "Comfort", "Energy", "Manager", "Orchestrator"],
+            cooldown=cooldown_seconds,
+        )
 
         self.dispatcher = Dispatcher.get_instance()
 
@@ -52,12 +63,7 @@ class Intelligence:
         self.last_consultation_time = time.time()
 
         try:
-            import asyncio
-
-            loop = asyncio.get_event_loop()
-            decision = await loop.run_in_executor(
-                None, self.instructor.consult_oracle, world
-            )
+            decision = await self._mixture_of_agents_decision(world)
 
             if decision:
                 logger.info(
@@ -73,24 +79,82 @@ class Intelligence:
             self.last_consultation_time = time.time()
             return None
 
-    def make_decision(self, world: WorldState) -> Decision | None:
-        """Sync version for TUI mode compatibility."""
-        if not self.llm_available:
+    async def _mixture_of_agents_decision(
+        self, world: WorldState
+    ) -> Decision | None:
+        """Consult all specialist agents in parallel, then Manager decides."""
+
+        # Get memory context for each specialist (they filter by domain)
+        security_memory = self.security_agent._get_memory_context(
+            world, domain_filter=["lock", "binary_sensor", "alarm_control_panel"]
+        )
+        comfort_memory = self.comfort_agent._get_memory_context(
+            world, domain_filter=["climate", "light", "switch", "fan", "cover"]
+        )
+        energy_memory = self.energy_agent._get_memory_context(
+            world, domain_filter=["light", "switch", "climate", "fan", "media_player"]
+        )
+
+        # Consult all specialists in parallel
+        logger.info("[MoA] Consulting specialist agents...")
+        proposals = await asyncio.gather(
+            self.security_agent.propose_action(world, security_memory),
+            self.comfort_agent.propose_action(world, comfort_memory),
+            self.energy_agent.propose_action(world, energy_memory),
+            return_exceptions=True,
+        )
+
+        # Log each proposal
+        for proposal in proposals:
+            if isinstance(proposal, Exception):
+                logger.error(f"[MoA] Agent error: {proposal}")
+                continue
+
+            action_str = (
+                f"{proposal.decision.intent}" if proposal.decision else "null"
+            )
+            logger.info(
+                f"[{proposal.agent_name}] Proposed: {action_str}",
+                reasoning=proposal.reasoning,
+                priority=proposal.priority_score,
+                confidence=proposal.confidence,
+            )
+
+        # Filter out exceptions
+        valid_proposals = [p for p in proposals if not isinstance(p, Exception)]
+
+        # Manager arbitration (works with ActionIntent now)
+        # Use general memory context for Manager
+        manager_memory = self.security_agent._get_memory_context(world)
+        final_proposal, manager_reasoning = await self.manager_agent.decide(
+            valid_proposals, manager_memory
+        )
+
+        if not final_proposal:
+            logger.info("[Manager] Final Decision: null", reasoning=manager_reasoning)
             return None
 
-        current_time = time.time()
-        time_since_last = current_time - self.last_consultation_time
-
-        if time_since_last < self.cooldown_seconds:
-            return None
-
-        self.last_consultation_time = time.time()
-
-        try:
-            decision = self.instructor.consult_oracle(world_state=world)
-            return decision
-        except Exception as e:
-            logger.error("Decision failed", error=str(e))
+        # Convert ActionIntent to Decision via ActionOrchestrator
+        if isinstance(final_proposal, ActionIntent):
+            final_decision = self.orchestrator.format_decision(final_proposal, world)
+            if final_decision:
+                logger.info(
+                    "[Manager] Final Decision",
+                    action=final_decision.action,
+                    entity=final_proposal.entity_name,
+                    intent=final_proposal.intent,
+                    reasoning=manager_reasoning,
+                )
+            else:
+                logger.error(
+                    "[Orchestrator] Failed to format decision",
+                    intent=final_proposal.intent,
+                )
+            return final_decision
+        else:
+            logger.error(
+                f"[Manager] Unexpected proposal type: {type(final_proposal)}"
+            )
             return None
 
     def apply_action(self, world: WorldState, decision: Decision):
@@ -138,7 +202,7 @@ class Intelligence:
                     "success": True,
                 }
 
-                self.instructor.memory.store(memory_text, memory_metadata)
+                self.memory.store(memory_text, memory_metadata)
                 logger.debug("Decision stored in memory", action=decision.action)
             except Exception as mem_error:
                 logger.warning("Memory store failed", error=str(mem_error))
@@ -158,7 +222,7 @@ class Intelligence:
                     "error": str(e),
                 }
 
-                self.instructor.memory.store(memory_text, memory_metadata)
+                self.memory.store(memory_text, memory_metadata)
                 logger.error(
                     "Decision failed and logged to memory",
                     action=decision.action,
