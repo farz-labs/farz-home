@@ -101,15 +101,31 @@ async def call_service(request: Request, service_call: ServiceCallRequest):
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, request: Request):
-    """WebSocket for real-time state updates."""
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket for real-time state updates with heartbeat."""
     await manager.connect(websocket)
+    tick = 0
 
     try:
         while True:
-            world_state = request.app.state.world_state
+            world_state = websocket.app.state.world_state
             state_dict = world_state.to_dict()
-            await websocket.send_json(state_dict)
+            
+            # Send heartbeat message
+            await websocket.send_json({
+                "type": "heartbeat",
+                "tick": tick,
+                "timestamp": asyncio.get_event_loop().time()
+            })
+            
+            # Send state update message
+            await websocket.send_json({
+                "type": "state",
+                "data": state_dict,
+                "tick": tick
+            })
+            
+            tick += 1
             await asyncio.sleep(1)
     except WebSocketDisconnect:
         manager.disconnect(websocket)

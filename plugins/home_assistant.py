@@ -5,6 +5,7 @@ from core.plugins import BasePlugin
 from core.logger import logger
 from core.models import Entity, WorldState, DecisionParams
 
+import dotenv
 
 class HomeAssistantPlugin(BasePlugin):
     def __init__(self):
@@ -14,6 +15,7 @@ class HomeAssistantPlugin(BasePlugin):
         self._entity_map = {}
         self._tick_counter = 0
         self._poll_interval = 5
+        dotenv.load_dotenv()
 
     @property
     def name(self) -> str:
@@ -35,9 +37,15 @@ class HomeAssistantPlugin(BasePlugin):
 
     def _fetch_ha_entities(self) -> list[dict]:
         try:
-            url = f"{self._get_ha_url()}/api/states"
+            ha_url = self._get_ha_url()
+            ha_token = self._get_ha_token()
+            
+            if not ha_url or not ha_token:
+                return []
+            
+            url = f"{ha_url}/api/states"
             headers = {
-                "Authorization": f"Bearer {self._get_ha_token()}",
+                "Authorization": f"Bearer {ha_token}",
                 "Content-Type": "application/json",
             }
             response = requests.get(url, headers=headers, timeout=10)
